@@ -1,9 +1,9 @@
-pandas 
-numpy 
+pandas==2.2.3
+numpy==1.26.4 
 # chardet
 # getpass
-oracledb
+oracledb==2.5.0
 # sqlalchemy
-datetime
+# datetime
 os
 load_dotenv
