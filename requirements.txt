@@ -5,5 +5,5 @@ numpy==1.26.4
 oracledb==2.5.0
 # sqlalchemy
 # datetime
-os
+# os
 load_dotenv
