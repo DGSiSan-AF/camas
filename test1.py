@@ -9,7 +9,7 @@ import numpy as np
 # import chardet
 # import getpass
 import oracledb
-from sqlalchemy import create_engine
+# from sqlalchemy import create_engine
 from datetime import datetime
 import os
 from dotenv import load_dotenv
