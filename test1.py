@@ -6,8 +6,8 @@
 
 import pandas as pd
 import numpy as np
-import chardet
-import getpass
+# import chardet
+# import getpass
 import oracledb
 from sqlalchemy import create_engine
 from datetime import datetime
