@@ -1,0 +1,3 @@
+id_tipo_elemento,detalle,cantidad,estado,fecha_alta,fecha_baja,fecha_ultima_modificacion,id_local,id_sublocal,id_mostrador,id_elemento,cod_dominio
+4,camilla 01,1,A,2025-01-17 03:32:11.830801,,2025-01-17 03:32:11.830801,,1.0,,,
+4,camilla 02,1,A,2025-01-17 03:35:41.751063,,2025-01-17 03:35:41.751063,,1.0,,,

@@ -1,0 +1,8 @@
+id_tipo_sector;descripcion;estado;fecha_alta;fecha_baja;fecha_modificacion
+1;Administracion;A;;;
+2;Ambulatorio;A;;;
+3;Guardia;A;;;
+4;Internacion;A;;;
+5;Laboratorio;A;;;
+6;Quirurgico;A;;;
+7;Otros;A;;;
