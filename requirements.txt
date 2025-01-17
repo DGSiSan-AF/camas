@@ -3,7 +3,7 @@ numpy
 chardet
 getpass
 oracledb
-sqlalchemy import create_engine
-datetime import datetime
+sqlalchemy
+datetime
 os
 load_dotenv
