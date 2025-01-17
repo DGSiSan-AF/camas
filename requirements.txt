@@ -1,9 +1,9 @@
 pandas 
 numpy 
-chardet
-getpass
+# chardet
+# getpass
 oracledb
-sqlalchemy
+# sqlalchemy
 datetime
 os
 load_dotenv
