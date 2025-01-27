@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 # import chardet
 # import getpass
-import oracledb
+# import oracledb
 # from sqlalchemy import create_engine
 from datetime import datetime
 import os
@@ -66,6 +66,9 @@ if "df_loaded" not in st.session_state:
     st.session_state["df_elemento"] = pd.read_csv(".//db//elementos.csv")
     st.session_state["df_t_elemento"] = pd.read_csv(".//db//t_elementos.csv")
     st.session_state["df_t_sector"] = pd.read_csv(".//db//tipo_sector.csv", sep=";")
+    st.session_state["creaSector"] = False
+    st.session_state["creaSublocal"] = False
+    st.session_state["creaElemento"] = False
     st.session_state["df_loaded"] = True    
 df_efector = st.session_state["df_efector"] 
 df_edificio = st.session_state["df_edificio"]
@@ -76,6 +79,7 @@ df_t_sector = st.session_state["df_t_sector"]
 df_sublocal = st.session_state["df_sublocal"]
 df_elemento = st.session_state["df_elemento"]
 df_t_elemento = st.session_state["df_t_elemento"]
+
 
 
 # Jupiter Notebbok
@@ -210,6 +214,178 @@ def df_joins ():
     return final_result
 
     
+def crear_elemento():
+    # Agregar nueva fila
+    st.subheader("Agregar Elementos en el sublocal")
+    with st.form("Agregar Elemento"):
+        nuevo_elemento = pd.DataFrame([{
+            "id_tipo_elemento": st.selectbox(
+                    "Selecciona un elemento:", 
+                    options=df_t_elemento["id_tipo_elemento"].tolist(), 
+                    format_func=lambda x: df_t_elemento[df_t_elemento["id_tipo_elemento"] == x]["descripcion"].values[0]
+                ),
+            "detalle": st.text_input("Detalle"),
+            "cantidad" : 1,
+            "estado" : 'A',
+            "fecha_alta" : datetime.now(),
+            "fecha_baja" : None,
+            "fecha_ultima_modificacion" : datetime.now(),
+            "id_local": None,
+            "id_sublocal": sublocal_seleccionado,
+            "id_mostrador" : None,
+            "id_elemento" : df_elemento['id_elemento'].max()+1,
+            "cod_dominio" : None
+            # "id_establecimiento": hospital_seleccionado
+            }])
+
+        if st.form_submit_button("Agregar Elemento"):
+            # df_add_el = pd.DataFrame(nueva_fila)
+            st.session_state["df_elemento"] = pd.concat([st.session_state["df_elemento"], nuevo_elemento], axis=0)
+            # st.session_state["df_elemento"].append(nueva_fila, ignore_index=True)
+            
+            st.success("Fila agregada exitosamente.")
+            nuevo_merge = pd.DataFrame([{
+            "id_tipo_elemento": nuevo_elemento['id_tipo_elemento'].values[0],
+            "tipo_elemento_det": df_t_elemento.loc[(df_t_elemento['id_tipo_elemento']==nuevo_elemento['id_tipo_elemento'].values[0],'descripcion')].values[0],
+            "id_elemento" : nuevo_elemento['id_elemento'].values[0],
+            "elemento_det" : nuevo_elemento['detalle'].values[0],
+            # "fecha_alta" : datetime.now(),
+            # "fecha_baja" : None,
+            # "fecha_ultima_modificacion" : datetime.now(),
+            "id_local": local_seleccionado,
+            "local_det" : st.session_state["df_local"].loc[(st.session_state["df_local"]['id_local']==local_seleccionado,'descripcion')].values[0],
+            "id_sublocal": sublocal_seleccionado,
+            "sublocal_det" :st.session_state["df_sublocal"].loc[(st.session_state["df_sublocal"]['id_sublocal']==nuevo_elemento['id_sublocal'].values[0],'descripcion')].values[0],
+            "cod_sector" : sector_seleccionado,
+            "sector_det" : None,
+            "id_planta" : None,
+            "planta_det" : None,
+            "id_edificio" : None,
+            "edificio_det" : None,
+            "id_establecimiento" : None,
+            "establ_det" : None,
+            "tipo_sector" : None
+            # "id_establecimiento": hospital_seleccionado
+        }])
+            datos_filtrados = pd.concat([datos_filtrados, nuevo_merge], axis=0)        # st.dataframe(df_elemento)
+            st.dataframe(datos_filtrados)
+        # st.session_state["df_sector"].to_csv(".//db//sectores.csv",index=False)
+        st.session_state["df_elemento"].to_csv(".//db//elementos.csv",index=False)
+        # df_sublocal.to_csv(".//db//sublocales.csv",index=False)
+
+def crear_sector():
+    
+    # if st.session_state["creaSector"]:
+            
+    st.write("### Crear Sector")
+
+
+    # if st.button("Agregar Sector"):
+    with st.form("Agregar Sector",clear_on_submit=True):
+
+        sector_nombre = st.text_input("Nombre del nuevo Sector")
+
+        locales_f = df_local[
+            (df_local["id_planta"] == planta_seleccionada) & 
+            # (df_merged["id_edificio"] == edificio_seleccionado) &
+            # (df_merged["id_planta"] == planta_seleccionada) &
+            (df_local["id_sector"].isnull()) #revisar df_local
+            ]
+        # st.table(locales_f)
+        # st.table(locales_f)
+        sector_locales = st.multiselect(
+            "Selecciona los Locales:",
+            options=locales_f["id_local"].tolist(),
+            format_func=lambda x: locales_f[locales_f["id_local"] == x]["descripcion"].values[0]
+            )
+        
+        t_sector_seleccionado = st.selectbox("Sector asignado:",
+                                    options=df_t_sector["id_tipo_sector"].tolist(),
+                                    format_func=lambda x: df_t_sector[df_t_sector["id_tipo_sector"] == x]["descripcion"].values[0]
+                                    )
+
+        
+
+        # Crear un nuevo DataFrame con los datos del sector
+        nuevo_id_sector = float(1.0 if df_sector.empty else df_sector["cod_sector"].max() + 1.0)
+        nuevo_sector = pd.DataFrame({
+            "cod_sector": nuevo_id_sector,
+            "descripcion": sector_nombre,
+            "estado": "A",
+            "fecha_alta": datetime.now(),
+            "fecha_baja": None,
+            "fecha_ultima_modificacion": datetime.now(),
+            "cod_dominio": None,
+            "id_usuario": 1,
+            "id_lugar": int(hospital_seleccionado),
+            "id_area": None,
+            "tipo_sector": int(t_sector_seleccionado)
+        }, index=[1])
+
+
+        if st.form_submit_button("Agregar Sector"):
+            submit = st.form_submit_button("Agregar Sector")
+            if submit:
+        # if st.button("Agregar Sector"):
+                if not sector_nombre:
+                    return st.error("Debe ingresar un nombre para el sector.")
+                elif not planta_seleccionada:
+                    return st.error("Debe seleccionar al menos un local.")
+                
+                else:
+        # Agregar al DataFrame en sesión
+                    st.session_state.df_sector = pd.concat([st.session_state.df_sector, nuevo_sector], ignore_index=True)
+                    st.session_state.df_local.loc[
+                        st.session_state.df_local['id_local'].isin(sector_locales), 
+                        'id_sector'] = nuevo_id_sector
+                    # st.session_state.df_local['id_sector'] = st.session_state.df_local['id_sector'].astype('int64')
+                    st.session_state["df_sector"].to_csv(".//db//sectores.csv",index=False)
+                    st.session_state["df_local"].to_csv(".//db//locales.csv",index=False)                
+                    st.session_state["creaSector"] = False
+                    return st.success(f"Sector '{sector_nombre}' guardado correctamente.")
+                    # st.experimental_rerun()
+                    
+
+
+
+def crear_sublocal():
+    st.write("### Agregar nuevo Sublocal")
+
+    with st.form("Agregar Sublocal"):
+        st.markdown("#### Agregar Sublocal 🏢")
+        st.markdown("En esta sección podrá agregar un sublocal al local seleccionado.")
+        dotacion_map = {"Si": "S", "No": "N"}  # Diccionario para mapear valores
+        nuevo_id_sublocal = 1 if df_sublocal.empty else df_sublocal["id_sublocal"].max() + 1
+        nuevo_nombre_sublocal = st.text_input("Nombre del Sublocal", help="Ingrese el nombre del nuevo sublocal.")
+        dotacion_val =  st.selectbox("Selecciona dotación:",
+                        options=list(dotacion_map.keys())  # Mostramos "Si" y "No"
+                        )
+        
+        if st.form_submit_button("Agregar Sublocal"):
+            # df_sublocal = pd.concat([df_sublocal, nuevo_sublocal],axis=0)           # st.session_state["df_elemento"].append(nueva_fila, ignore_index=True)
+            nuevo_sublocal = pd.DataFrame([{
+            "id_sublocal": nuevo_id_sublocal,
+            "descripcion": nuevo_nombre_sublocal,
+            "descripcion_numerica" : 1,
+            "estado" : 'A',
+            "fecha_alta" : datetime.now(),
+            "fecha_baja" : None,
+            "fecha_ultima_modificacion" : datetime.now(),
+            "id_local": local_seleccionado,
+            "cod_dominio" : None,
+            "id_usuario": 1,
+            "dotacion" : dotacion_val,
+            "id_sector" : sector_seleccionado
+            
+            # "id_establecimiento": hospital_seleccionado
+            }])
+            st.session_state.df_sublocal = pd.concat([st.session_state.df_sublocal, nuevo_sublocal], axis=0, ignore_index=True)
+            st.success("Fila agregada exitosamente.")
+            st.table(st.session_state.df_sublocal)
+            st.session_state.df_sublocal.to_csv(".\\db\\sublocales.csv",index=False)
+            st.experimental_rerun()
+            st.success("Fila agregada exitosamente.")
+
 
 
 # In[61]:
@@ -225,15 +401,6 @@ df_merged = df_joins()
 st.title("Gestión de Sectores Sublocales y Camas")
 st.write("### Selecciona un Efector")
 
-# gb = GridOptionsBuilder.from_dataframe(df_merged)
-# gb.configure_pagination(paginationAutoPageSize=True)
-# gb.configure_side_bar()
-# gb.configure_default_column(editable=True, groupable=True)
-# grid_options = gb.build()
-
-# df_merged_p = df_merged.groupby(
-#     ["id_establecimiento", "detalle_establecimiento"], as_index=False
-# ).sum()
 
 # Selector de hospital
 
@@ -253,6 +420,7 @@ st.write("### Selecciona un Edificio")
 edificios = df_merged[df_merged["id_establecimiento"] == int(hospital_seleccionado)][["id_edificio", "edificio_det"]].drop_duplicates()
 edificios["id_edificio"] = edificios["id_edificio"].fillna(0)
 # st.dataframe(sectores)
+
 # Manejar el caso de sectores vacíos
 if edificios.empty:
     st.warning("No hay Edificios disponibles para este hospital.")
@@ -302,97 +470,18 @@ else:
                 format_func=lambda x: sectores[sectores["cod_sector"] == x]["sector_det"].values[0]
                 )
 
-# st.write("Locales")
-# # st.write(hospital_seleccionado)
-# locales = df_merged[
-#     (df_merged["id_establecimiento"] == int(hospital_seleccionado)) & 
-#     (df_merged["id_planta"] == int(planta_seleccionada))
-#     ][["id_local", "local_det"]].drop_duplicates()
-# locales["id_local"] = locales["id_local"].fillna(0)
-# # st.dataframe(sectores)
-# # Manejar el caso de sectores vacíos
-# if locales.empty:
-#     st.warning("No hay locales disponibles para este hospital.")
-#     local_seleccionado = None
-# else:
-#     local_seleccionado = st.selectbox(
-#         "Selecciona un Local:",
-#         options=locales["id_local"].tolist(),
-#         format_func=lambda x: locales[locales["id_local"] == x]["local_det"].values[0]
-#     )
+# if st.button("Crear un nuevo Sector"):
+#     # st.write("Sector seleccionado: ", sector_seleccionado)
+#     st.write("Aqui deberíamos agregar otro sector")
+#     st.session_state["creaSector"] = True
+crear_sector()
+    # st.session_state["creaSector"] = False
+    # st.experimental_rerun()
 
-# st.write(type(planta_seleccionada))
-# st.write(int(sector_seleccionado))
-# st.table(df_local)
-
-st.write("### Crear Sector")
-
-
-# if st.button("Agregar Sector"):
-with st.form("Agregar Sector"):
-
-    sector_nombre = st.text_input("Nombre del nuevo Sector")
-
-    locales_f = df_local[
-        (df_local["id_planta"] == planta_seleccionada) & 
-        # (df_merged["id_edificio"] == edificio_seleccionado) &
-        # (df_merged["id_planta"] == planta_seleccionada) &
-        (df_local["id_sector"].isnull()) #revisar df_local
-        ]
-    # st.table(locales_f)
-    # st.table(locales_f)
-    sector_locales = st.multiselect(
-        "Selecciona los Locales:",
-        options=locales_f["id_local"].tolist(),
-        format_func=lambda x: locales_f[locales_f["id_local"] == x]["descripcion"].values[0]
-        )
-    
-    t_sector_seleccionado = st.selectbox("Sector asignado:",
-                                options=df_t_sector["id_tipo_sector"].tolist(),
-                                format_func=lambda x: df_t_sector[df_t_sector["id_tipo_sector"] == x]["descripcion"].values[0]
-                                )
-
-    if st.form_submit_button("Agregar Sector"): 
-
-        if not sector_nombre:
-            st.error("Debe ingresar un nombre para el sector.")
-        elif not planta_seleccionada:
-            st.error("Debe seleccionar al menos un local.")
-        else:
-
-
-            # Crear un nuevo DataFrame con los datos del sector
-            nuevo_id_sector = float(1.0 if df_sector.empty else df_sector["cod_sector"].max() + 1.0)
-            nuevo_sector = pd.DataFrame({
-                "cod_sector": nuevo_id_sector,
-                "descripcion": sector_nombre,
-                "estado": "A",
-                "fecha_alta": datetime.now(),
-                "fecha_baja": None,
-                "fecha_ultima_modificacion": datetime.now(),
-                "cod_dominio": None,
-                "id_usuario": 1,
-                "id_lugar": int(hospital_seleccionado),
-                "id_area": None,
-                "tipo_sector": int(t_sector_seleccionado)
-            }, index=[1])
-
-            # Agregar al DataFrame en sesión
-            st.session_state.df_sector = pd.concat([st.session_state.df_sector, nuevo_sector], ignore_index=True)
-            st.session_state.df_local.loc[
-                st.session_state.df_local['id_local'].isin(sector_locales), 
-                'id_sector'] = nuevo_id_sector
-            # st.session_state.df_local['id_sector'] = st.session_state.df_local['id_sector'].astype('int64')
-            st.session_state["df_sector"].to_csv(".//db//sectores.csv",index=False)
-            st.session_state["df_local"].to_csv(".//db//locales.csv",index=False)
-            st.experimental_rerun()
-            st.success(f"Sector '{sector_nombre}' guardado correctamente.")
-
-
-st.write("### Locales")
+st.write("### Selecciona Locales")
 if sector_seleccionado is None:
     st.warning("Debe seleccionar un Sector primero.")
-    locales_seleccionados = []
+    local_seleccionado = None
 else:
     locales = df_merged[
         (df_merged["id_establecimiento"] == hospital_seleccionado) & 
@@ -403,7 +492,7 @@ else:
 
     if locales["id_local"].isnull().all():
         st.warning("No hay locales disponibles para esta planta.")
-        local_seleccionado = []
+        local_seleccionado = None
         st.write(locales)
     else:
         locales = locales.dropna(subset=["id_local"])
@@ -415,56 +504,7 @@ else:
         )
 
 
-# st.write("Tipo de Sector")
-
-# t_sectores = df_merged[
-#     (df_merged["id_establecimiento"] == int(hospital_seleccionado)) &
-#     (df_merged["id_local"] == int(locales_seleccionados))
-#     ][["tipo_sector", "tipo_sector_det"]].drop_duplicates()
-# t_sectores["tipo_sector"] = t_sectores["tipo_sector"].dropna()
-# # st.dataframe(sectores)
-# # Manejar el caso de sectores vacíos
-# if t_sectores.empty:
-#     st.warning("No hay tipos de sectores disponibles para este hospital.")
-#     t_sector_seleccionado = None
-# else:
-#     t_sector_seleccionado = st.selectbox(
-#         "Tipo sector:",
-#         options=t_sectores["tipo_sector"].tolist(),
-#         format_func=lambda x: t_sectores[t_sectores["tipo_sector"] == x]["tipo_sector_det"].values[0]
-#     )
-
-# sectores = df_merged[
-#     (df_merged["id_establecimiento"] == int(hospital_seleccionado)) &
-#     (df_merged["id_local"] == int(local_seleccionado))
-#     ][["cod_sector", "sector_det"]].drop_duplicates()
-# sectores["cod_sector"] = sectores["cod_sector"].fillna(0)
-# sectores["sector_det"] = sectores["sector_det"].fillna('Cargar Detalle')
-# # st.dataframe(sectores)
-# # Manejar el caso de sectores vacíos
-# if sectores.empty:
-#     st.warning("No hay sectores disponibles para este hospital.")
-#     sector_seleccionado = None
-# else:
-#     sector_seleccionado = st.selectbox(
-#         "Sector asignado:",
-#         options=sectores["cod_sector"].tolist(),
-#         format_func=lambda x: sectores[sectores["cod_sector"] == x]["sector_det"].values[0]
-#     )
-#     # st.write(sector_seleccionado)
-#     sector_det_carga = st.text_input("Nuevo detalle del sector")
-#     if st.button("Actualizar detalle del sector"):        
-#         # sector_det_carga = st.text_input("Detalle")
-#         st.session_state["df_sector"].loc[st.session_state["df_sector"]["cod_sector"] == sector_seleccionado,'descripcion'] = sector_det_carga
-#         st.success("Detalle actualizado correctamente.")
-
-# st.write(type(locales_seleccionados))
-# st.table(locales_seleccionados)
-
-
-# st.write(hospital_seleccionado)
-
-st.write("### Seleccionar Sublocal")
+st.write("### Selecciona Sublocal")
 
 if st.session_state.df_sublocal["id_sublocal"].isnull().all():
     st.warning("No hay sublocales disponibles para este local.")
@@ -472,7 +512,8 @@ if st.session_state.df_sublocal["id_sublocal"].isnull().all():
 
 else:
     if local_seleccionado is None:
-        st.warning("Debe seleccionar un local.")
+        st.warning("Debe seleccionar un Local primero.")
+        sublocales = None
     else:
         sublocales = df_sublocal[
         (df_sublocal["id_sector"] == sector_seleccionado) &
@@ -480,185 +521,55 @@ else:
 
         ][["id_sublocal", "descripcion"]].drop_duplicates()
         sublocales["id_sublocal"] = sublocales["id_sublocal"].fillna(0)
-    # sublocales["sublocal_det"] = sublocales["sublocal_det"].fillna('Debe cargar sublocal')
-    # st.dataframe(sectores)
+
     # Manejar el caso de sectores vacíos
-    if sublocales["id_sublocal"].isnull().all():
-        st.warning("No hay sublocales disponibles para este local.")
-        sublocal_seleccionado = None
-    else:
-        # if sublocales["id_sublocal"]:
-        sublocal_seleccionado = st.selectbox(
-            "Selecciona un Sublocal:",
-            options=sublocales["id_sublocal"].tolist(),
-            format_func=lambda x: sublocales[sublocales["id_sublocal"] == x]["descripcion"].values[0]
-        )
-        # if st.button("Crear un nuevo sublocal"):                
-            # sublocal_det_carga = st.text_input("Nombre del Sublocal")
+        if sublocales["id_sublocal"].isnull().all():
+            st.warning("No hay sublocales disponibles para este local.")
+            sublocal_seleccionado = None
+        else:
+            # if sublocales["id_sublocal"]:
+            sublocal_seleccionado = st.selectbox(
+                "Selecciona un Sublocal:",
+                options=sublocales["id_sublocal"].tolist(),
+                format_func=lambda x: sublocales[sublocales["id_sublocal"] == x]["descripcion"].values[0]
+            )
+            # if st.button("Crear un nuevo sublocal"):                
+                # sublocal_det_carga = st.text_input("Nombre del Sublocal")
 
-
-st.write("### Agregar nuevo Sublocal")
-
-with st.form("Agregar Sublocal"):
-    st.markdown("#### Agregar Sublocal 🏢")
-    st.markdown("En esta sección podrá agregar un sublocal al local seleccionado.")
-    dotacion_map = {"Si": "S", "No": "N"}  # Diccionario para mapear valores
-    nuevo_id_sublocal = 1 if df_sublocal.empty else df_sublocal["id_sublocal"].max() + 1
-    nuevo_nombre_sublocal = st.text_input("Nombre del Sublocal", help="Ingrese el nombre del nuevo sublocal.")
-    dotacion_val =  st.selectbox("Selecciona dotación:",
-                    options=list(dotacion_map.keys())  # Mostramos "Si" y "No"
-                    )
-    
-    if st.form_submit_button("Agregar Sublocal"):
-        # df_sublocal = pd.concat([df_sublocal, nuevo_sublocal],axis=0)           # st.session_state["df_elemento"].append(nueva_fila, ignore_index=True)
-        nuevo_sublocal = pd.DataFrame([{
-        "id_sublocal": nuevo_id_sublocal,
-        "descripcion": nuevo_nombre_sublocal,
-        "descripcion_numerica" : 1,
-        "estado" : 'A',
-        "fecha_alta" : datetime.now(),
-        "fecha_baja" : None,
-        "fecha_ultima_modificacion" : datetime.now(),
-        "id_local": local_seleccionado,
-        "cod_dominio" : None,
-        "id_usuario": 1,
-        "dotacion" : dotacion_val,
-        "id_sector" : sector_seleccionado
-        
-        # "id_establecimiento": hospital_seleccionado
-        }])
-        st.session_state.df_sublocal = pd.concat([st.session_state.df_sublocal, nuevo_sublocal], axis=0, ignore_index=True)
-        st.success("Fila agregada exitosamente.")
-        st.table(st.session_state.df_sublocal)
-        st.session_state.df_sublocal.to_csv(".\\db\\sublocales.csv",index=False)
-        st.experimental_rerun()
-        st.success("Fila agregada exitosamente.")
+crear_sublocal()
 
     # Filtrar datos por hospital seleccionado
 
-# st.write("### Sublocales")
-# if sector_seleccionado is None:
-#     st.warning("Debe seleccionar un Sector primero.")
-#     locales_seleccionados = []
-# else:
-#     locales = df_merged[
-#         (df_merged["id_establecimiento"] == hospital_seleccionado) & 
-#         (df_merged["id_edificio"] == edificio_seleccionado) &
-#         (df_merged["id_planta"] == planta_seleccionada) &
-#         (df_merged["cod_sector"] == sector_seleccionado)
-#     ][["id_local", "local_det"]].drop_duplicates()
-
-#     if locales["id_local"].isnull().all():
-#         st.warning("No hay locales disponibles para esta planta.")
-#         local_seleccionado = []
-#         st.write(locales)
-#     else:
-#         locales = locales.dropna(subset=["id_local"])
-#         #multiselect
-#         local_seleccionado = st.selectbox(
-#             "Selecciona los Locales:",
-#             options=locales["id_local"].tolist(),
-#             format_func=lambda x: locales[locales["id_local"] == x]["local_det"].values[0]
-#         )
-
-datos_filtrados = df_merged[
-    # [df_merged["id_establecimiento"] == hospital_seleccionado,
-    # df_merged["cod_sector"] == sector_seleccionado]
-            (df_merged["id_establecimiento"] == hospital_seleccionado) &
-            (df_merged["cod_sector"] == sector_seleccionado) &
-            (df_merged["id_planta"] == planta_seleccionada) &
-            (df_merged["id_local"] == local_seleccionado) &
-            (df_merged["id_sublocal"] == sublocal_seleccionado)
-    ]
-
-
-
-# Mostrar datos filtrados
-st.subheader("Tabla de Elementos en el sublocal")
-if datos_filtrados.empty:
-    st.write("**No hay datos para mostrar.**")
+if (sublocales is None):
+    st.warning("Debe seleccionar un sublocal.")
 else:
-    st.dataframe(datos_filtrados)
+    if (sublocales["id_sublocal"].isnull().all()):
+        st.warning("Debe seleccionar un local primero.")
+        elemento = None
+    else:    
+        datos_filtrados = df_merged[
+            # [df_merged["id_establecimiento"] == hospital_seleccionado,
+            # df_merged["cod_sector"] == sector_seleccionado]
+                    (df_merged["id_establecimiento"] == hospital_seleccionado) &
+                    (df_merged["cod_sector"] == sector_seleccionado) &
+                    (df_merged["id_planta"] == planta_seleccionada) &
+                    (df_merged["id_local"] == local_seleccionado) &
+                    (df_merged["id_sublocal"] == sublocal_seleccionado)
+            ]
 
-# # Visualización con ag-Grid
-#     st.title("Visualización de Datos con ag-Grid")
+        # Mostrar datos filtrados
+        st.subheader("Tabla de Elementos en el sublocal")
+        if datos_filtrados.empty:
+            st.write("**No hay datos para mostrar.**")
+        else:
+            st.dataframe(datos_filtrados)
 
-
-    # AgGrid(
-    #     datos_filtrados,
-    #     gridOptions=grid_options,
-    #     height=600,
-    #     width="100%",
-    #     enable_enterprise_modules=True
-    # )
-
-# Formulario para agregar camas
-
-# Botón para resetear filtros
-# if st.button("Resetear filtros"):
-#     st.experimental_rerun()
-
-# st.subheader("Agregar Elementos al Sublocal")
-# num_camas = st.number_input("Número de camas a agregar:", min_value=1, step=1)
-
-# if st.button("Agregar elementos"):
-#     st.success(f"Se han agregado {num_camas} camas al hospital seleccionado.")
-
-# Agregar nueva fila
-st.subheader("Agregar Elementos en el sublocal")
-with st.form("Agregar Elemento"):
-    nuevo_elemento = pd.DataFrame([{
-        "id_tipo_elemento": st.selectbox(
-                "Selecciona un elemento:", 
-                options=df_t_elemento["id_tipo_elemento"].tolist(), 
-                format_func=lambda x: df_t_elemento[df_t_elemento["id_tipo_elemento"] == x]["descripcion"].values[0]
-            ),
-        "detalle": st.text_input("Detalle"),
-        "cantidad" : 1,
-        "estado" : 'A',
-        "fecha_alta" : datetime.now(),
-        "fecha_baja" : None,
-        "fecha_ultima_modificacion" : datetime.now(),
-        "id_local": None,
-        "id_sublocal": sublocal_seleccionado,
-        "id_mostrador" : None,
-        "id_elemento" : df_elemento['id_elemento'].max()+1,
-        "cod_dominio" : None
-        # "id_establecimiento": hospital_seleccionado
-        }])
-
-    if st.form_submit_button("Agregar Elemento"):
-        # df_add_el = pd.DataFrame(nueva_fila)
-        st.session_state["df_elemento"] = pd.concat([st.session_state["df_elemento"], nuevo_elemento], axis=0)
-        # st.session_state["df_elemento"].append(nueva_fila, ignore_index=True)
-        
-        st.success("Fila agregada exitosamente.")
-        nuevo_merge = pd.DataFrame([{
-        "id_tipo_elemento": nuevo_elemento['id_tipo_elemento'].values[0],
-        "tipo_elemento_det": df_t_elemento.loc[(df_t_elemento['id_tipo_elemento']==nuevo_elemento['id_tipo_elemento'].values[0],'descripcion')].values[0],
-        "id_elemento" : nuevo_elemento['id_elemento'].values[0],
-        "elemento_det" : nuevo_elemento['detalle'].values[0],
-        # "fecha_alta" : datetime.now(),
-        # "fecha_baja" : None,
-        # "fecha_ultima_modificacion" : datetime.now(),
-        "id_local": local_seleccionado,
-        "local_det" : st.session_state["df_local"].loc[(st.session_state["df_local"]['id_local']==local_seleccionado,'descripcion')].values[0],
-        "id_sublocal": sublocal_seleccionado,
-        "sublocal_det" :st.session_state["df_sublocal"].loc[(st.session_state["df_sublocal"]['id_sublocal']==nuevo_elemento['id_sublocal'].values[0],'descripcion')].values[0],
-        "cod_sector" : sector_seleccionado,
-        "sector_det" : None,
-        "id_planta" : None,
-        "planta_det" : None,
-        "id_edificio" : None,
-        "edificio_det" : None,
-        "id_establecimiento" : None,
-        "establ_det" : None,
-        "tipo_sector" : None
-        # "id_establecimiento": hospital_seleccionado
-    }])
-        datos_filtrados = pd.concat([datos_filtrados, nuevo_merge], axis=0)        # st.dataframe(df_elemento)
-        st.dataframe(datos_filtrados)
-    # st.session_state["df_sector"].to_csv(".//db//sectores.csv",index=False)
-    st.session_state["df_elemento"].to_csv(".//db//elementos.csv",index=False)
-    # df_sublocal.to_csv(".//db//sublocales.csv",index=False)
-
+crear_elemento()
+css="""
+<style>
+    [data-testid="stForm"] {
+        background: LightBlue;
+    }
+</style>
+"""
+st.write(css, unsafe_allow_html=True)
